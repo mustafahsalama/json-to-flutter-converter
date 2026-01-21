@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JSON to Dart Generator</title>
+  <title>JSON to Entity & Model Generator</title>
   <style>
     * {
       margin: 0;
@@ -65,7 +65,64 @@
     }
 
     .input-section {
+      margin-bottom: 20px;
+    }
+
+    .options-section {
       margin-bottom: 30px;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      border: 2px solid #e0e0e0;
+    }
+
+    .option-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 12px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      padding: 10px;
+      border-radius: 8px;
+      transition: background 0.2s ease;
+    }
+
+    .checkbox-label:hover {
+      background: rgba(14, 165, 233, 0.05);
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: #0ea5e9;
+    }
+
+    .checkbox-text {
+      margin-left: 10px;
+      font-size: 14px;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .checkbox-icon {
+      width: 18px;
+      height: 18px;
+      color: #0ea5e9;
     }
 
     .label-row {
@@ -347,6 +404,18 @@
       textarea {
         height: 150px;
       }
+
+      .checkbox-group {
+        gap: 8px;
+      }
+
+      .checkbox-label {
+        padding: 8px;
+      }
+
+      .checkbox-text {
+        font-size: 13px;
+      }
     }
 
     /* Syntax highlighting */
@@ -359,7 +428,7 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>JSON To Dart Converter</h1>
+      <h1>🎯 Flutter JSON Converter</h1>
       <p>Generate clean architecture Entity & Model code from JSON</p>
     </div>
 
@@ -389,6 +458,32 @@
           id="jsonInput" 
           placeholder='Paste your JSON here...&#10;&#10;Example:&#10;{&#10;  "id": 1,&#10;  "name": "John Doe",&#10;  "email": "john@example.com",&#10;  "isActive": true&#10;}'
         ></textarea>
+      </div>
+
+      <div class="options-section">
+        <label class="option-label">
+          <strong>Additional Code Generation:</strong>
+        </label>
+        <div class="checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="generateDio" />
+            <span class="checkbox-text">
+              <svg class="checkbox-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
+              </svg>
+              Generate Dio API Service
+            </span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="generateHive" />
+            <span class="checkbox-text">
+              <svg class="checkbox-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+              </svg>
+              Generate Hive Adapter
+            </span>
+          </label>
+        </div>
       </div>
 
       <div class="button-group">
@@ -474,6 +569,8 @@
     function generate() {
       const input = document.getElementById('jsonInput').value.trim();
       const className = document.getElementById('className').value.trim() || 'User';
+      const generateDio = document.getElementById('generateDio').checked;
+      const generateHive = document.getElementById('generateHive').checked;
       
       if (!input) {
         showError('Please paste JSON data to generate code');
@@ -499,6 +596,7 @@
       let toJson = '';
       let toEntity = '';
       let toStringFields = '';
+      let hiveFields = '';
 
       const keys = Object.keys(json);
       
@@ -513,6 +611,10 @@
         toJson += `      '${key}': ${camelKey},\n`;
         toEntity += `      ${camelKey}: ${camelKey},\n`;
         toStringFields += `${camelKey}: $${camelKey}`;
+        
+        if (generateHive) {
+          hiveFields += `  @HiveField(${i})\n  final ${type} ${camelKey};\n`;
+        }
         
         if (i < keys.length - 1) {
           toStringFields += ', ';
@@ -557,17 +659,146 @@ ${toEntity}    );
   }
 }`;
 
-      const output = `// ENTITY (Domain Layer)
+      let output = `// ENTITY (Domain Layer)
 ${entity}
 
 // MODEL (Data Layer)
 ${model}`;
+
+      // Add Dio API Service
+      if (generateDio) {
+        const camelClassName = toCamelCase(className);
+        const apiService = `
+
+// DIO API SERVICE
+import 'package:dio/dio.dart';
+
+class ${className}ApiService {
+  final Dio _dio;
+
+  ${className}ApiService(this._dio);
+
+  // GET - Fetch single ${className.toLowerCase()}
+  Future<${className}Model> get${className}(int id) async {
+    try {
+      final response = await _dio.get('/${camelClassName}s/\$id');
+      return ${className}Model.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // GET - Fetch all ${className.toLowerCase()}s
+  Future<List<${className}Model>> getAll${className}s() async {
+    try {
+      final response = await _dio.get('/${camelClassName}s');
+      return (response.data as List)
+          .map((json) => ${className}Model.fromJson(json))
+          .toList();
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // POST - Create ${className.toLowerCase()}
+  Future<${className}Model> create${className}(${className}Model ${camelClassName}) async {
+    try {
+      final response = await _dio.post(
+        '/${camelClassName}s',
+        data: ${camelClassName}.toJson(),
+      );
+      return ${className}Model.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // PUT - Update ${className.toLowerCase()}
+  Future<${className}Model> update${className}(int id, ${className}Model ${camelClassName}) async {
+    try {
+      final response = await _dio.put(
+        '/${camelClassName}s/\$id',
+        data: ${camelClassName}.toJson(),
+      );
+      return ${className}Model.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // DELETE - Delete ${className.toLowerCase()}
+  Future<void> delete${className}(int id) async {
+    try {
+      await _dio.delete('/${camelClassName}s/\$id');
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  String _handleError(DioException e) {
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return 'Connection timeout. Please check your internet.';
+      case DioExceptionType.badResponse:
+        return 'Server error: \${e.response?.statusCode}';
+      case DioExceptionType.cancel:
+        return 'Request cancelled';
+      default:
+        return 'Something went wrong. Please try again.';
+    }
+  }
+}`;
+        output += apiService;
+      }
+
+      // Add Hive Adapter
+      if (generateHive) {
+        const typeId = Math.floor(Math.random() * 1000); // Random typeId for example
+        const hiveAdapter = `
+
+// HIVE ADAPTER (Local Storage)
+import 'package:hive/hive.dart';
+
+part '${camelCase(className)}_model.g.dart';
+
+@HiveType(typeId: ${typeId})
+class ${className}HiveModel extends HiveObject {
+${hiveFields}
+  ${className}HiveModel({
+${constructor}  });
+
+  factory ${className}HiveModel.fromModel(${className}Model model) {
+    return ${className}HiveModel(
+${toEntity}    );
+  }
+
+  ${className}Model toModel() {
+    return ${className}Model(
+${toEntity}    );
+  }
+
+  @override
+  String toString() {
+    return '${className}HiveModel(${toStringFields})';
+  }
+}
+
+// Run this command to generate the adapter:
+// flutter packages pub run build_runner build --delete-conflicting-outputs`;
+        output += hiveAdapter;
+      }
 
       document.getElementById('output').textContent = output;
       document.getElementById('outputSection').classList.add('visible');
       
       // Scroll to output
       document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function camelCase(str) {
+      return str.charAt(0).toLowerCase() + str.slice(1);
     }
 
     function copyCode() {
