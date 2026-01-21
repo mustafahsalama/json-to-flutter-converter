@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JSON to Entity & Model Generator</title>
+  <title> JSON to Entity & Model Generator</title>
   <style>
     * {
       margin: 0;
@@ -495,7 +495,7 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1> JSON to Dart Converter</h1>
+      <h1>🎯 Flutter JSON Converter</h1>
       <p>Generate clean architecture Entity & Model code from JSON</p>
     </div>
 
@@ -573,14 +573,14 @@
       <div class="right-panel">
         <div class="output-section hidden" id="outputSection">
           <div class="output-header">
-            <!-- <div class="output-title">
+            <div class="output-title">
               <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
               </svg>
               Generated Dart Code
-            </div> -->
+            </div>
             <button class="copy-btn" onclick="copyCode()" id="copyBtn">
-              <svg width="10" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
               </svg>
               Copy Code
@@ -608,15 +608,23 @@
   </div>
 
   <script>
-    function detectType(value) {
+    function detectType(value, keyName = '') {
       if (value === null) return 'String?';
       if (Array.isArray(value)) {
         if (value.length === 0) return 'List<dynamic>';
         const firstItem = value[0];
+        if (typeof firstItem === 'object' && !Array.isArray(firstItem)) {
+          // Nested object in array
+          const className = capitalize(keyName.replace(/s$/, '')); // Remove 's' and capitalize
+          return `List<${className}>`;
+        }
         const itemType = detectType(firstItem);
         return `List<${itemType}>`;
       }
-      if (typeof value === 'object') return 'Map<String, dynamic>';
+      if (typeof value === 'object') {
+        // Nested object
+        return capitalize(keyName);
+      }
       if (Number.isInteger(value)) return 'int';
       if (typeof value === 'number') return 'double';
       if (typeof value === 'boolean') return 'bool';
@@ -625,6 +633,18 @@
 
     function toCamelCase(str) {
       return str.charAt(0).toLowerCase() + str.slice(1);
+    }
+
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function isPrimitiveType(type) {
+      return ['int', 'double', 'String', 'bool', 'String?'].includes(type) || 
+             type.startsWith('List<int>') || 
+             type.startsWith('List<double>') || 
+             type.startsWith('List<String>') || 
+             type.startsWith('List<bool>');
     }
 
     function showError(message) {
@@ -669,56 +689,99 @@
         return;
       }
 
-      let fields = '';
-      let constructor = '';
-      let fromJson = '';
-      let toJson = '';
-      let toEntity = '';
-      let toStringFields = '';
-      let hiveFields = '';
-
-      const keys = Object.keys(json);
+      // Collect all nested classes
+      const nestedClasses = [];
       
-      for (let i = 0; i < keys.length; i++) {
-        const key = keys[i];
-        const type = detectType(json[key]);
-        const camelKey = toCamelCase(key);
-        
-        fields += `  final ${type} ${camelKey};\n`;
-        constructor += `    required this.${camelKey},\n`;
-        fromJson += `      ${camelKey}: json['${key}'],\n`;
-        toJson += `      '${key}': ${camelKey},\n`;
-        toEntity += `      ${camelKey}: ${camelKey},\n`;
-        toStringFields += `${camelKey}: $${camelKey}`;
-        
-        if (generateHive) {
-          hiveFields += `  @HiveField(${i})\n  final ${type} ${camelKey};\n`;
-        }
-        
-        if (i < keys.length - 1) {
-          toStringFields += ', ';
-        }
-      }
+      function generateClassCode(obj, clsName) {
+        let fields = '';
+        let constructor = '';
+        let fromJson = '';
+        let toJson = '';
+        let toEntity = '';
+        let toStringFields = '';
+        let hiveFields = '';
+        let neededImports = new Set();
 
-      const entity = `class ${className} {
+        const keys = Object.keys(obj);
+        
+        for (let i = 0; i < keys.length; i++) {
+          const key = keys[i];
+          const value = obj[key];
+          const type = detectType(value, key);
+          const camelKey = toCamelCase(key);
+          
+          // Check if nested object
+          if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+            const nestedClassName = capitalize(key);
+            fields += `  final ${nestedClassName} ${camelKey};\n`;
+            constructor += `    required this.${camelKey},\n`;
+            fromJson += `      ${camelKey}: ${nestedClassName}Model.fromJson(json['${key}']),\n`;
+            toJson += `      '${key}': ${camelKey}.toJson(),\n`;
+            toEntity += `      ${camelKey}: ${camelKey}.toEntity(),\n`;
+            toStringFields += `${camelKey}: $${camelKey}`;
+            
+            // Generate nested class
+            nestedClasses.push(generateClassCode(value, nestedClassName));
+            
+            if (generateHive) {
+              hiveFields += `  @HiveField(${i})\n  final ${nestedClassName} ${camelKey};\n`;
+            }
+          }
+          // Check if array of objects
+          else if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+            const nestedClassName = capitalize(key.replace(/s$/, '')); // Remove 's'
+            fields += `  final List<${nestedClassName}> ${camelKey};\n`;
+            constructor += `    required this.${camelKey},\n`;
+            fromJson += `      ${camelKey}: (json['${key}'] as List).map((e) => ${nestedClassName}Model.fromJson(e)).toList(),\n`;
+            toJson += `      '${key}': ${camelKey}.map((e) => e.toJson()).toList(),\n`;
+            toEntity += `      ${camelKey}: ${camelKey}.map((e) => e.toEntity()).toList(),\n`;
+            toStringFields += `${camelKey}: $${camelKey}`;
+            
+            // Generate nested class from first item
+            nestedClasses.push(generateClassCode(value[0], nestedClassName));
+            
+            if (generateHive) {
+              hiveFields += `  @HiveField(${i})\n  final List<${nestedClassName}> ${camelKey};\n`;
+            }
+          }
+          // Primitive types
+          else {
+            fields += `  final ${type} ${camelKey};\n`;
+            constructor += `    required this.${camelKey},\n`;
+            fromJson += `      ${camelKey}: json['${key}'],\n`;
+            toJson += `      '${key}': ${camelKey},\n`;
+            toEntity += `      ${camelKey}: ${camelKey},\n`;
+            toStringFields += `${camelKey}: $${camelKey}`;
+            
+            if (generateHive) {
+              hiveFields += `  @HiveField(${i})\n  final ${type} ${camelKey};\n`;
+            }
+          }
+          
+          if (i < keys.length - 1) {
+            toStringFields += ', ';
+          }
+        }
+
+        const entity = `class ${clsName} {
 ${fields}
-  const ${className}({
+  const ${clsName}({
 ${constructor}  });
 
   @override
   String toString() {
-    return '${className}(${toStringFields})';
+    return '${clsName}(${toStringFields})';
   }
 }`;
 
-      const model = `class ${className}Model extends ${className} {
-  const ${className}Model({
+        const model = `class ${clsName}Model extends ${clsName} {
+  const ${clsName}Model({
 ${constructor}  }) : super(
 ${constructor.split('\n').filter(l => l.trim()).map(l => '    ' + l.trim()).join('\n')}
        );
 
-  factory ${className}Model.fromJson(Map<String, dynamic> json) {
-    return ${className}Model(
+  factory ${clsName}Model.fromJson(Map<String, dynamic> json) {
+    return ${clsName}Model(
 ${fromJson}    );
   }
 
@@ -727,29 +790,65 @@ ${fromJson}    );
 ${toJson}    };
   }
 
-  ${className} toEntity() {
-    return ${className}(
+  ${clsName} toEntity() {
+    return ${clsName}(
 ${toEntity}    );
   }
 
   @override
   String toString() {
-    return '${className}Model(${toStringFields})';
+    return '${clsName}Model(${toStringFields})';
   }
 }`;
 
-      let output = `// ENTITY (Domain Layer)
-${entity}
+        return {
+          className: clsName,
+          entity,
+          model,
+          hiveFields,
+          constructor,
+          toEntity,
+          toStringFields
+        };
+      }
 
-// MODEL (Data Layer)
-${model}`;
+      // Generate main class
+      const mainClass = generateClassCode(json, className);
+      
+      // Build output
+      let output = '';
+      
+      // Add nested classes first (bottom-up)
+      if (nestedClasses.length > 0) {
+        output += '// ============================================\n';
+        output += '// NESTED ENTITIES & MODELS\n';
+        output += '// ============================================\n\n';
+        
+        nestedClasses.reverse().forEach((cls, index) => {
+          output += `// ${cls.className.toUpperCase()} ENTITY\n`;
+          output += cls.entity + '\n\n';
+          output += `// ${cls.className.toUpperCase()} MODEL\n`;
+          output += cls.model + '\n\n';
+        });
+      }
+      
+      // Add main class
+      output += '// ============================================\n';
+      output += `// MAIN ${className.toUpperCase()} ENTITY & MODEL\n`;
+      output += '// ============================================\n\n';
+      output += `// ${className.toUpperCase()} ENTITY\n`;
+      output += mainClass.entity + '\n\n';
+      output += `// ${className.toUpperCase()} MODEL\n`;
+      output += mainClass.model;
 
       // Add Dio API Service
       if (generateDio) {
         const camelClassName = toCamelCase(className);
         const apiService = `
 
+// ============================================
 // DIO API SERVICE
+// ============================================
 import 'package:dio/dio.dart';
 
 class ${className}ApiService {
@@ -834,39 +933,66 @@ class ${className}ApiService {
 
       // Add Hive Adapter
       if (generateHive) {
-        const typeId = Math.floor(Math.random() * 1000); // Random typeId for example
-        const hiveAdapter = `
-
-// HIVE ADAPTER (Local Storage)
-import 'package:hive/hive.dart';
-
-part '${camelCase(className)}_model.g.dart';
-
-@HiveType(typeId: ${typeId})
-class ${className}HiveModel extends HiveObject {
-${hiveFields}
-  ${className}HiveModel({
-${constructor}  });
-
-  factory ${className}HiveModel.fromModel(${className}Model model) {
-    return ${className}HiveModel(
-${toEntity}    );
-  }
-
-  ${className}Model toModel() {
-    return ${className}Model(
-${toEntity}    );
-  }
-
-  @override
-  String toString() {
-    return '${className}HiveModel(${toStringFields})';
-  }
-}
-
-// Run this command to generate the adapter:
-// flutter packages pub run build_runner build --delete-conflicting-outputs`;
-        output += hiveAdapter;
+        output += '\n\n// ============================================\n';
+        output += '// HIVE ADAPTERS (Local Storage)\n';
+        output += '// ============================================\n';
+        output += 'import \'package:hive/hive.dart\';\n\n';
+        
+        // Add nested hive models
+        if (nestedClasses.length > 0) {
+          nestedClasses.reverse().forEach((cls, index) => {
+            const typeId = Math.floor(Math.random() * 1000);
+            output += `part '${camelCase(cls.className)}_model.g.dart';\n\n`;
+            output += `@HiveType(typeId: ${typeId})\n`;
+            output += `class ${cls.className}HiveModel extends HiveObject {\n`;
+            output += cls.hiveFields;
+            output += `\n  ${cls.className}HiveModel({\n`;
+            output += cls.constructor;
+            output += `  });\n\n`;
+            output += `  factory ${cls.className}HiveModel.fromModel(${cls.className}Model model) {\n`;
+            output += `    return ${cls.className}HiveModel(\n`;
+            output += cls.toEntity;
+            output += `    );\n`;
+            output += `  }\n\n`;
+            output += `  ${cls.className}Model toModel() {\n`;
+            output += `    return ${cls.className}Model(\n`;
+            output += cls.toEntity;
+            output += `    );\n`;
+            output += `  }\n\n`;
+            output += `  @override\n`;
+            output += `  String toString() {\n`;
+            output += `    return '${cls.className}HiveModel(${cls.toStringFields})';\n`;
+            output += `  }\n`;
+            output += `}\n\n`;
+          });
+        }
+        
+        // Main hive model
+        const typeId = Math.floor(Math.random() * 1000);
+        output += `part '${camelCase(className)}_model.g.dart';\n\n`;
+        output += `@HiveType(typeId: ${typeId})\n`;
+        output += `class ${className}HiveModel extends HiveObject {\n`;
+        output += mainClass.hiveFields;
+        output += `\n  ${className}HiveModel({\n`;
+        output += mainClass.constructor;
+        output += `  });\n\n`;
+        output += `  factory ${className}HiveModel.fromModel(${className}Model model) {\n`;
+        output += `    return ${className}HiveModel(\n`;
+        output += mainClass.toEntity;
+        output += `    );\n`;
+        output += `  }\n\n`;
+        output += `  ${className}Model toModel() {\n`;
+        output += `    return ${className}Model(\n`;
+        output += mainClass.toEntity;
+        output += `    );\n`;
+        output += `  }\n\n`;
+        output += `  @override\n`;
+        output += `  String toString() {\n`;
+        output += `    return '${className}HiveModel(${mainClass.toStringFields})';\n`;
+        output += `  }\n`;
+        output += `}\n\n`;
+        output += `// Run this command to generate the adapter:\n`;
+        output += `// flutter packages pub run build_runner build --delete-conflicting-outputs`;
       }
 
       document.getElementById('output').textContent = output;
