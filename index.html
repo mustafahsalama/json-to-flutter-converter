@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JSON to Entity & Model Generator</title>
+  <title>Flutter JSON to Entity & Model Generator</title>
   <style>
     * {
       margin: 0;
@@ -62,14 +62,34 @@
 
     .content {
       padding: 30px;
+      display: flex;
+      gap: 30px;
+      min-height: calc(100vh - 200px);
+    }
+
+    .left-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 400px;
+    }
+
+    .right-panel {
+      flex: 1.5;
+      display: flex;
+      flex-direction: column;
+      min-width: 500px;
     }
 
     .input-section {
       margin-bottom: 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
 
     .options-section {
-      margin-bottom: 30px;
+      margin-bottom: 20px;
       padding: 16px;
       background: #f8f9fa;
       border-radius: 12px;
@@ -163,7 +183,8 @@
 
     textarea {
       width: 100%;
-      height: 200px;
+      flex: 1;
+      min-height: 300px;
       padding: 16px;
       font-family: 'Courier New', monospace;
       font-size: 14px;
@@ -188,7 +209,7 @@
     .button-group {
       display: flex;
       gap: 12px;
-      margin-bottom: 30px;
+      margin-bottom: 0;
     }
 
     button {
@@ -233,12 +254,18 @@
     }
 
     .output-section {
-      display: none;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
       animation: slideIn 0.4s ease-out;
     }
 
     .output-section.visible {
-      display: block;
+      display: flex;
+    }
+
+    .output-section.hidden {
+      display: none;
     }
 
     @keyframes slideIn {
@@ -303,8 +330,9 @@
       font-family: 'Courier New', monospace;
       font-size: 13px;
       line-height: 1.6;
-      max-height: 500px;
+      flex: 1;
       overflow-y: auto;
+      margin: 0;
     }
 
     pre::-webkit-scrollbar {
@@ -373,6 +401,37 @@
       display: flex;
     }
 
+    .placeholder {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #f8f9fa;
+      border-radius: 12px;
+      border: 2px dashed #e0e0e0;
+      padding: 40px;
+      text-align: center;
+      color: #999;
+    }
+
+    .placeholder svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      opacity: 0.3;
+    }
+
+    .placeholder h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+      color: #666;
+    }
+
+    .placeholder p {
+      font-size: 14px;
+    }
+
     @media (max-width: 768px) {
       .container {
         border-radius: 0;
@@ -385,6 +444,14 @@
 
       .content {
         padding: 20px;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .left-panel,
+      .right-panel {
+        min-width: 100%;
+        min-height: 400px;
       }
 
       .button-group {
@@ -402,7 +469,7 @@
       }
 
       textarea {
-        height: 150px;
+        min-height: 200px;
       }
 
       .checkbox-group {
@@ -428,95 +495,107 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>JSON to Flutter Converter</h1>
+      <h1>🎯 Flutter JSON Converter</h1>
       <p>Generate clean architecture Entity & Model code from JSON</p>
     </div>
 
     <div class="content">
-      <div class="error-message" id="errorMessage">
-        <span>⚠️</span>
-        <span id="errorText"></span>
-      </div>
-
-      <div class="input-section">
-        <div class="label-row">
-          <label>
-            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
-            </svg>
-            JSON Input
-          </label>
-          <input 
-            type="text" 
-            class="class-name-input" 
-            id="className" 
-            placeholder="Class name (e.g., User)"
-            value="User"
-          />
+      <div class="left-panel">
+        <div class="error-message" id="errorMessage">
+          <span>⚠️</span>
+          <span id="errorText"></span>
         </div>
-        <textarea 
-          id="jsonInput" 
-          placeholder='Paste your JSON here...&#10;&#10;Example:&#10;{&#10;  "id": 1,&#10;  "name": "John Doe",&#10;  "email": "john@example.com",&#10;  "isActive": true&#10;}'
-        ></textarea>
-      </div>
 
-      <div class="options-section">
-        <label class="option-label">
-          <strong>Additional Code Generation:</strong>
-        </label>
-        <div class="checkbox-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="generateDio" />
-            <span class="checkbox-text">
-              <svg class="checkbox-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
+        <div class="input-section">
+          <div class="label-row">
+            <label>
+              <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
               </svg>
-              Generate Dio API Service
-            </span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="generateHive" />
-            <span class="checkbox-text">
-              <svg class="checkbox-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
-              </svg>
-              Generate Hive Adapter
-            </span>
-          </label>
-        </div>
-      </div>
-
-      <div class="button-group">
-        <button class="btn-primary" onclick="generate()">
-          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-          </svg>
-          Generate Code
-        </button>
-        <button class="btn-secondary" onclick="clearAll()">
-          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-          Clear
-        </button>
-      </div>
-
-      <div class="output-section" id="outputSection">
-        <div class="output-header">
-          <div class="output-title">
-            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-            </svg>
-            Generated Dart Code
+              JSON Input
+            </label>
+            <input 
+              type="text" 
+              class="class-name-input" 
+              id="className" 
+              placeholder="Class name (e.g., User)"
+              value="User"
+            />
           </div>
-          <button class="copy-btn" onclick="copyCode()" id="copyBtn">
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+          <textarea 
+            id="jsonInput" 
+            placeholder='Paste your JSON here...&#10;&#10;Example:&#10;{&#10;  "id": 1,&#10;  "name": "John Doe",&#10;  "email": "john@example.com",&#10;  "isActive": true&#10;}'
+          ></textarea>
+        </div>
+
+        <div class="options-section">
+          <label class="option-label">
+            <strong>Additional Code Generation:</strong>
+          </label>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="generateDio" />
+              <span class="checkbox-text">
+                <svg class="checkbox-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
+                </svg>
+                Generate Dio API Service
+              </span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="generateHive" />
+              <span class="checkbox-text">
+                <svg class="checkbox-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+                </svg>
+                Generate Hive Adapter
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn-primary" onclick="generate()">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
             </svg>
-            Copy Code
+            Generate Code
+          </button>
+          <button class="btn-secondary" onclick="clearAll()">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+            Clear
           </button>
         </div>
-        <pre id="output"></pre>
+      </div>
+
+      <div class="right-panel">
+        <div class="output-section hidden" id="outputSection">
+          <div class="output-header">
+            <div class="output-title">
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              Generated Dart Code
+            </div>
+            <button class="copy-btn" onclick="copyCode()" id="copyBtn">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+              </svg>
+              Copy Code
+            </button>
+          </div>
+          <pre id="output"></pre>
+        </div>
+
+        <div class="placeholder" id="placeholder">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+          </svg>
+          <h3>Your Dart code will appear here</h3>
+          <p>Paste your JSON and click "Generate Code" to get started</p>
+        </div>
       </div>
     </div>
   </div>
@@ -791,10 +870,9 @@ ${toEntity}    );
       }
 
       document.getElementById('output').textContent = output;
+      document.getElementById('outputSection').classList.remove('hidden');
       document.getElementById('outputSection').classList.add('visible');
-      
-      // Scroll to output
-      document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      document.getElementById('placeholder').style.display = 'none';
     }
 
     function camelCase(str) {
@@ -831,7 +909,11 @@ ${toEntity}    );
     function clearAll() {
       document.getElementById('jsonInput').value = '';
       document.getElementById('className').value = 'User';
+      document.getElementById('generateDio').checked = false;
+      document.getElementById('generateHive').checked = false;
+      document.getElementById('outputSection').classList.add('hidden');
       document.getElementById('outputSection').classList.remove('visible');
+      document.getElementById('placeholder').style.display = 'flex';
       document.getElementById('errorMessage').classList.remove('show');
     }
 
