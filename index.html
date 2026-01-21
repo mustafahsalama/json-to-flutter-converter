@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>JSON → Flutter Entity & Model Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    textarea {
+      width: 100%;
+      height: 180px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+
+    button {
+      margin: 10px 0;
+      padding: 12px 20px;
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background: #125aa0;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #dcdcdc;
+      padding: 15px;
+      overflow-x: auto;
+    }
+
+    .section {
+      margin-top: 20px;
+    }
+
+    .copy {
+      float: right;
+      cursor: pointer;
+      color: #1976d2;
+    }
+  </style>
+</head>
+<body>
+
+<h2>JSON → Flutter Entity & Model Converter</h2>
+
+<textarea id="jsonInput" placeholder="Paste JSON response here..."></textarea>
+
+<button onclick="generate()">Generate Dart Code</button>
+
+<div class="section">
+  <strong>Generated Code</strong>
+  <span class="copy" onclick="copyCode()">Copy</span>
+  <pre id="output"></pre>
+</div>
+
+<script>
+function detectType(value) {
+  if (Number.isInteger(value)) return 'int';
+  if (typeof value === 'number') return 'double';
+  if (typeof value === 'boolean') return 'bool';
+  return 'String';
+}
+
+function generate() {
+  const input = document.getElementById('jsonInput').value;
+  let json;
+
+  try {
+    json = JSON.parse(input);
+  } catch {
+    alert('Invalid JSON');
+    return;
+  }
+
+  const className = 'User';
+  let fields = '';
+  let constructor = '';
+  let fromJson = '';
+  let toJson = '';
+  let toEntity = '';
+
+  for (const key in json) {
+    const type = detectType(json[key]);
+    fields += `  final ${type} ${key};\n`;
+    constructor += `    required this.${key},\n`;
+    fromJson += `      ${key}: json['${key}'],\n`;
+    toJson += `      '${key}': ${key},\n`;
+    toEntity += `      ${key}: ${key},\n`;
+  }
+
+  const entity = `
+class ${className} {
+${fields}
+  const ${className}({
+${constructor}  });
+}
+`;
+
+  const model = `
+class ${className}Model extends ${className} {
+  const ${className}Model({
+${constructor}  });
+
+  factory ${className}Model.fromJson(Map<String, dynamic> json) {
+    return ${className}Model(
+${fromJson}    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+${toJson}    };
+  }
+
+  ${className} toEntity() {
+    return ${className}(
+${toEntity}    );
+  }
+}
+`;
+
+  document.getElementById('output').textContent =
+`// ENTITY (Domain Layer)
+${entity}
+
+// MODEL (Data Layer)
+${model}`;
+}
+
+function copyCode() {
+  const text = document.getElementById('output').textContent;
+  navigator.clipboard.writeText(text);
+  alert('Copied!');
+}
+</script>
+
+</body>
+</html>
